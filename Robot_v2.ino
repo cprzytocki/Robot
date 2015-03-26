@@ -38,18 +38,24 @@ I2CEncoder encoder_ArmMotor;
 
 
 
-//I2CEncoder encoder_GripMotor;
+
 
 /////////////////////////////////////////////////////////////
 
+const int ci_Left_Infrared = A1;
+const int ci_Grip_Infrared = A2;
+const int ci_Bottom_Infrared = A0;
 
+SharpIR LeftInfrared(ci_Left_Infrared , 25, 93, 20150);
+SharpIR GripInfrared(ci_Grip_Infrared, 25, 93, 20150);
+SharpIR BottomInfrared(ci_Bottom_Infrared, 25, 93, 20150);
 
 
 const int ci_Front_Motor = 9;
 const int ci_Back_Motor = 8;
-const int ci_Elevator_Motor = 0;
-const int ci_Grip_Motor = 0;
-const int ci_Arm_Motor = 0;
+const int ci_Elevator_Motor = 12;
+const int ci_Grip_Motor = 6;
+const int ci_Arm_Motor = 13;
 
 unsigned int ui_Front_Motor_Speed;
 unsigned int ui_Back_Motor_Speed;
@@ -94,8 +100,8 @@ unsigned long lowest_distance = 9999;
 boolean bt_Motors_Enabled = true;
 
 //port pin constants
-const int ci_Ultrasonic_Ping = 2;   //input plug
-const int ci_Ultrasonic_Data = 3;   //output plug
+//const int ci_Ultrasonic_Ping = 2;   //input plug
+//const int ci_Ultrasonic_Data = 3;   //output plug
 const int ci_Charlieplex_LED1 = 4;
 const int ci_Charlieplex_LED2 = 5;
 const int ci_Charlieplex_LED3 = 6;
@@ -103,8 +109,6 @@ const int ci_Charlieplex_LED4 = 7;
 const int ci_Mode_Button = 7;
 const int ci_Right_Motor = 10;
 const int ci_Left_Motor = 11;
-//const int ci_Arm_Motor = 10;
-//const int ci_Grip_Motor = 11;
 const int ci_Motor_Enable_Switch = 12;
 const int ci_Right_Line_Tracker = A0;
 const int ci_Middle_Line_Tracker = A1;
@@ -213,9 +217,15 @@ void setup() {
   CharliePlexM::setBtn(ci_Charlieplex_LED1,ci_Charlieplex_LED2,
                        ci_Charlieplex_LED3,ci_Charlieplex_LED4,ci_Mode_Button);
 
+  // set up infrared sensors
+  pinMode (ci_Left_Infrared, INPUT);
+  pinMode (ci_Grip_Infrared, INPUT);
+  pinMode (ci_Bottom_Infrared, INPUT);
+  
+
   // set up ultrasonic
-  pinMode(ci_Ultrasonic_Ping, OUTPUT);
-  pinMode(ci_Ultrasonic_Data, INPUT);
+//  pinMode(ci_Ultrasonic_Ping, OUTPUT);
+//  pinMode(ci_Ultrasonic_Data, INPUT);
 
   // set up drive motors
   pinMode(ci_Right_Motor, OUTPUT);
@@ -250,7 +260,7 @@ void setup() {
   encoder_RightMotor.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
   encoder_RightMotor.setReversed(true);  // adjust for positive count when moving forward
   encoder_FrontMotor.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
-  encoder_FrontMotor.setReversed(true);  // adjust for positive count when moving forward
+  encoder_FrontMotor.setReversed(false);  // adjust for positive count when moving forward
   encoder_LeftMotor.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   encoder_LeftMotor.setReversed(false);  // adjust for positive count when moving forward
   encoder_BackMotor.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
@@ -344,8 +354,8 @@ void loop()
   {
     case 0:    //Robot stopped
     {
-      readLineTrackers();
-      Ping();
+ //     readLineTrackers();
+ //     Ping();
       servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
       servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop); 
       servo_FrontMotor.writeMicroseconds(ci_Left_Motor_Stop); 
@@ -366,7 +376,17 @@ void loop()
       
       ui_Mode_Indicator_Index = 0;
       
-      Serial.println(analogRead(ci_Light_Sensor));
+      Serial.println("Bottom");
+      BottomInfrared.distance();
+      Serial.println("Grip");
+      GripInfrared.distance();
+      Serial.println("Left");
+
+      LeftInfrared.distance();
+      
+
+      
+     // Serial.println(analogRead(ci_Light_Sensor));
       break;
     } 
   
@@ -403,13 +423,14 @@ void loop()
         
         switch(state){
           
+          
         case 1:
         {
           last_encoder = encoder_LeftMotor.getPosition();
           state++;
           break;
         }
-        
+     
         case 2:
         {
           
@@ -418,11 +439,12 @@ void loop()
           ui_Right_Motor_Speed = 1300;
           ui_Front_Motor_Speed = 1700;
           ui_Back_Motor_Speed = 1300;  
-          Ping();
+          
 
-          if (lowest_distance>=ul_Echo_Time)
+
+          if (lowest_distance>=BottomInfrared.distance())
           {
-             lowest_distance = ul_Echo_Time;
+             lowest_distance = BottomInfrared.distance();
              last_encoder2 = encoder_LeftMotor.getPosition();
           }
              
@@ -451,27 +473,31 @@ void loop()
         
         case 4:
         {
-          ui_Left_Motor_Speed = 200;
-          ui_Right_Motor_Speed = 200;
-          ui_Front_Motor_Speed = 1300;
-          ui_Back_Motor_Speed = 1700; 
-        break;          
-        }
-        }     
-         
-/*
-         
-          if ()/// ENCODER COUNT LESS THAN 360 degrees
-         {
-          Ping(); 
+          ui_Left_Motor_Speed = 1700;
+          ui_Right_Motor_Speed = 1700;
+          ui_Front_Motor_Speed = 200;
+          ui_Back_Motor_Speed = 200; 
+          
+          if (BottomInfrared.distance() <= 30)
           {
-          if (lowest_distance>=ul_echo_time)
-          {
-          lowest_distance = ul_echo_time;
+            state++;
           }
           
-   
+          break;          
         }
+        
+        case 5:
+        {
+          ui_Left_Motor_Speed = 200;
+          ui_Right_Motor_Speed = 200;
+          ui_Front_Motor_Speed = 200;
+          ui_Back_Motor_Speed = 200;      
+          break;
+        }
+        
+     }     
+         
+
         
         
         /*          CODE USED TO TEST STRAIGHT DRIVING
@@ -746,6 +772,7 @@ void readLineTrackers()
 }
 
 // measure distance to target using ultrasonic sensor  
+/*
 void Ping()
 {
   //Ping Ultrasonic
@@ -767,7 +794,7 @@ void Ping()
   Serial.println(ul_Echo_Time/58); //divide time by 58 to get distance in cm 
 #endif
 }  
-
+*/
 void SetLeftRight()
 {
   
